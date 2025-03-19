@@ -1,0 +1,57 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Usuarios {
+  id              String   @id @default(uuid())
+  correo          String   @unique
+  nombre          String
+  telefono        String
+  clave_ine       String
+  edad            Int?
+  sexo            String?
+  estatura        Float?
+  peso            Float?
+  ejercicio_semanal Int?
+  reservas        Reserva[] // Relación uno a muchos (un usuario puede hacer muchas reservas)
+  reservasHechas  Int      @default(0)
+  faltas          Int      @default(0)
+  rol             String
+  clave           String
+}
+
+model CentroDeportivo {
+  id              String   @id @default(uuid())
+  nombre          String
+  ubicacion       String
+  canchas         Canchas[] // Relación uno a muchos (un centro deportivo tiene muchas canchas)
+  reservas        Reserva[] // Relación uno a muchos (un centro deportivo puede estar en muchas reservas)
+}
+
+model Canchas {
+  id              String   @id @default(uuid())
+  nombre          String
+  deporte         String
+  alumbrado       Boolean
+  centroDeportivo CentroDeportivo @relation(fields: [centroDeportivoId], references: [id]) // Relación muchos a uno (una cancha pertenece a un centro deportivo)
+  centroDeportivoId String // Campo de la clave foránea
+  reservas        Reserva[] // Relación uno a muchos (una cancha puede estar en muchas reservas)
+}
+
+model Reserva {
+  id              String   @id @default(uuid())
+  fecha           DateTime
+  horaInicio      DateTime
+  horaFin         DateTime
+  centroDeportivo CentroDeportivo @relation(fields: [centroDeportivoId], references: [id])
+  centroDeportivoId String
+  cancha          Canchas @relation(fields: [canchaId], references: [id])
+  canchaId        String
+  reservador      Usuarios @relation(fields: [reservadorId], references: [id])
+  reservadorId    String
+}
