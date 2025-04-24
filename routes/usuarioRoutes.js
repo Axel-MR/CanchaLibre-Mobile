@@ -5,16 +5,16 @@ const {
   obtenerUsuarios,
   obtenerUsuarioPorId,
   eliminarUsuario,
-  iniciarSesion,
+  actualizarUsuario
 } = require('../controllers/usuarioController');
 
-// Rutas para usuarios
-router.post('/', crearUsuario);
-router.get('/', obtenerUsuarios);
-router.get('/:id', obtenerUsuarioPorId);
-router.delete('/:id', eliminarUsuario);
+// Proteger rutas con middleware de autenticación
+const authMiddleware = require('../middleware/auth');
 
-// Ruta para iniciar sesión
-router.post('/login', iniciarSesion);
+router.post('/', crearUsuario);
+router.get('/', authMiddleware, obtenerUsuarios);
+router.get('/:id', authMiddleware, obtenerUsuarioPorId);
+router.delete('/:id', authMiddleware, eliminarUsuario);
+router.put('/:id', authMiddleware, actualizarUsuario);
 
 module.exports = router;

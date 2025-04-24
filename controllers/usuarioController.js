@@ -56,7 +56,7 @@ const obtenerUsuarioPorId = async (req, res) => {
 
   try {
     const user = await prisma.usuarios.findUnique({
-      where: { id: id }, // Si usas UUID, no necesitas parseInt
+      where: { id: id }, 
     });
     if (user) {
       res.json(user);
@@ -75,7 +75,7 @@ const eliminarUsuario = async (req, res) => {
 
   try {
     await prisma.usuarios.delete({
-      where: { id: id }, // Si usas UUID, no necesitas parseInt
+      where: { id: id }, 
     });
     res.json({ message: 'Usuario eliminado correctamente' });
   } catch (error) {
@@ -83,6 +83,34 @@ const eliminarUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar usuario', details: error.message });
   }
 };
+
+// Actualizar un usuario por ID
+const actualizarUsuario = async (req, res) => {
+  const { id } = req.params;
+  const datosActualizados = req.body;
+
+  try {
+    // Si se actualiza la contraseña, hashearla
+    if (datosActualizados.clave) {
+      datosActualizados.clave = await bcrypt.hash(datosActualizados.clave, 10);
+    }
+
+    const usuarioActualizado = await prisma.usuarios.update({
+      where: { id: id },
+      data: datosActualizados,
+    });
+
+    res.json(usuarioActualizado);
+  } catch (error) {
+    if (error.code === 'P2025') {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+    } else {
+      console.error('Error al actualizar usuario:', error);
+      res.status(500).json({ error: 'Error al actualizar usuario', details: error.message });
+    }
+  }
+};
+
 
 // Iniciar sesión
 const iniciarSesion = async (req, res) => {
@@ -108,8 +136,8 @@ const iniciarSesion = async (req, res) => {
     // Generar el token JWT
     const token = jwt.sign(
       { userId: usuario.id, rol: usuario.rol }, // Payload (datos del usuario)
-      'secreto', // Clave secreta (debe ser una variable de entorno en producción)
-      { expiresIn: '1h' } // Tiempo de expiración del token
+      'secreto', 
+      { expiresIn: '1h' }
     );
 
     // Devolver el token en la respuesta
@@ -125,6 +153,7 @@ module.exports = {
   crearUsuario,
   obtenerUsuarios,
   obtenerUsuarioPorId,
+  actualizarUsuario,
   eliminarUsuario,
   iniciarSesion,
 };

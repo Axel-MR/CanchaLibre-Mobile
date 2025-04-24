@@ -1,27 +1,25 @@
 const express = require('express');
-const usuarioRoutes = require('./routes/usuarioRoutes');
-const centroDeportivoRoutes = require('./routes/centroDeportivoRoutes');
-const canchasRoutes = require('./routes/canchasRoutes');
-const reservaRoutes = require('./routes/reservaRoutes'); 
-
 const app = express();
-const port = 3000;
 
-// Middleware para parsear JSON
-app.use(express.json());
+// Middlewares esenciales PRIMERO
+app.use(express.json()); // Para parsear JSON
 
-// Ruta raíz
-app.get('/', (req, res) => {
-  res.send('¡Bienvenido a la API de CanchaLibre!');
+// Importar rutas DESPUÉS
+const authRoutes = require('./routes/authRoutes');
+
+// Registrar rutas
+app.use('/api/auth', authRoutes);
+
+// Manejo de errores global
+app.use((err, req, res, next) => {
+  console.error('Error global:', err);
+  res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// Conectar rutas
-app.use('/usuarios', usuarioRoutes);
-app.use('/centros-deportivos', centroDeportivoRoutes);
-app.use('/canchas', canchasRoutes); 
-app.use('/reservas', reservaRoutes);
-
-// Iniciar el servidor
-app.listen(port, 'localhost', () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+app.listen(3000, '0.0.0.0', () => {
+  console.log(`
+  🚀 Servidor corriendo:
+  - Local: http://localhost:3000
+  - Red: http://192.168.0.178:3000
+  `);
 });
