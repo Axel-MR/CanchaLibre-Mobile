@@ -1,402 +1,563 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+} from 'react-native';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-const ReservasScreen = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [centrosDeportivos, setCentrosDeportivos] = useState([]);
-  const [canchasDisponibles, setCanchasDisponibles] = useState([]);
-  const [selectedCentro, setSelectedCentro] = useState(null);
-  const [selectedCancha, setSelectedCancha] = useState(null);
-  const [horaInicio, setHoraInicio] = useState(new Date());
-  const [horaFin, setHoraFin] = useState(new Date(new Date().setHours(new Date().getHours() + 1)));
-  const [showTimePicker, setShowTimePicker] = useState(false);
+// Mock data (reemplazar por llamadas a la API)
+const CENTROS_DEPORTIVOS = [
+  {
+    id: '1',
+    nombre: 'Centro Deportivo Libertad',
+    ubicacion: 'Av. Libertad 1200',
+    imagenUrl: 'https://via.placeholder.com/150',
+  },
+  {
+    id: '2',
+    nombre: 'Complejo Municipal',
+    ubicacion: 'Calle Principal 500',
+    imagenUrl: 'https://via.placeholder.com/150',
+  },
+];
 
-  // Datos de ejemplo (luego se reemplazarán con datos reales de tu API)
-  useEffect(() => {
-    // Simulación de datos del backend
-    const mockCentros = [
-      {
-        id: '1',
-        nombre: 'Deportivo 1° de Mayo',
-        ubicacion: 'Av. Principal 123',
-        imagenUrl: 'https://ejemplo.com/imagen1.jpg',
-        canchas: [
-          {
-            id: 'c1',
-            nombre: 'Cancha 1 - Fútbol Rápido',
-            deporte: 'Fútbol',
-            alumbrado: true,
-            jugadores: 10,
-            imagenUrl: 'https://ejemplo.com/cancha1.jpg'
-          },
-          // Más canchas...
-        ]
-      },
-      // Más centros deportivos...
-    ];
-    setCentrosDeportivos(mockCentros);
-  }, []);
+const CANCHAS = [
+  {
+    id: '1',
+    nombre: 'Cancha 1',
+    deporte: 'Fútbol',
+    alumbrado: true,
+    jugadores: 10,
+    imagenUrl: 'https://via.placeholder.com/150',
+    centroDeportivoId: '1',
+  },
+  {
+    id: '2',
+    nombre: 'Cancha 2',
+    deporte: 'Tenis',
+    alumbrado: true,
+    jugadores: 2,
+    imagenUrl: 'https://via.placeholder.com/150',
+    centroDeportivoId: '1',
+  },
+  {
+    id: '3',
+    nombre: 'Cancha 3',
+    deporte: 'Básquet',
+    alumbrado: false,
+    jugadores: 10,
+    imagenUrl: 'https://via.placeholder.com/150',
+    centroDeportivoId: '2',
+  },
+];
 
-  const handleDateChange = (event, date) => {
-    setShowDatePicker(false);
-    if (date) {
-      setSelectedDate(date);
-    }
+const RESERVAS = [
+  {
+    id: '1',
+    fecha: new Date(2025, 3, 24), // 24 de abril de 2025
+    horaInicio: new Date(2025, 3, 24, 16, 0), // 16:00
+    horaFin: new Date(2025, 3, 24, 18, 0), // 18:00
+    centroDeportivoId: '1',
+    canchaId: '1',
+    reservadorId: '1',
+    objetosRentados: [
+      { id: '1', nombre: 'Balón de fútbol', cantidad: 1, imagenUrl: 'https://via.placeholder.com/50' },
+      { id: '2', nombre: 'Chaleco', cantidad: 10, imagenUrl: 'https://via.placeholder.com/50' },
+    ],
+  },
+  {
+    id: '2',
+    fecha: new Date(2025, 3, 25), // 25 de abril de 2025
+    horaInicio: new Date(2025, 3, 25, 10, 0), // 10:00
+    horaFin: new Date(2025, 3, 25, 12, 0), // 12:00
+    centroDeportivoId: '1',
+    canchaId: '2',
+    reservadorId: '1',
+    objetosRentados: [],
+  },
+  {
+    id: '3',
+    fecha: new Date(2025, 3, 26), // 26 de abril de 2025
+    horaInicio: new Date(2025, 3, 26, 18, 0), // 18:00
+    horaFin: new Date(2025, 3, 26, 19, 0), // 19:00
+    centroDeportivoId: '2',
+    canchaId: '3',
+    reservadorId: '1',
+    objetosRentados: [
+      { id: '3', nombre: 'Balón de básquet', cantidad: 1, imagenUrl: 'https://via.placeholder.com/50' },
+    ],
+  },
+];
+
+const USUARIOS = [
+  {
+    id: '1',
+    nombre: 'Juan Pérez',
+    email: 'juan@example.com',
+    telefono: '123-456-7890',
+  }
+];
+
+// Componentes
+const reservas = () => {
+  const [selectedTab, setSelectedTab] = useState('reservas');
+  const [selectedReserva, setSelectedReserva] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const verDetalleReserva = (reserva) => {
+    setSelectedReserva(reserva);
+    setModalVisible(true);
   };
 
-  const handleTimeChange = (event, time) => {
-    setShowTimePicker(false);
-    if (time) {
-      setHoraInicio(time);
-      setHoraFin(new Date(time.getTime() + 60 * 60 * 1000)); // +1 hora
-    }
+  const getNombreCentroDeportivo = (id) => {
+    const centro = CENTROS_DEPORTIVOS.find(c => c.id === id);
+    return centro ? centro.nombre : 'Desconocido';
   };
 
-  const handleReservar = () => {
-    // Lógica para crear la reserva
-    console.log('Reserva creada:', {
-      fecha: selectedDate,
-      horaInicio,
-      horaFin,
-      centroDeportivoId: selectedCentro?.id,
-      canchaId: selectedCancha?.id
-    });
-    // Aquí iría la llamada a tu API
+  const getNombreCancha = (id) => {
+    const cancha = CANCHAS.find(c => c.id === id);
+    return cancha ? cancha.nombre : 'Desconocida';
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      {/* Encabezado */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>RESERVAR CANCHA</Text>
+  const getNombreUsuario = (id) => {
+    const usuario = USUARIOS.find(u => u.id === id);
+    return usuario ? usuario.nombre : 'Desconocido';
+  };
+
+  const renderReservaItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.reservaCard}
+      onPress={() => verDetalleReserva(item)}
+    >
+      <View style={styles.reservaHeader}>
+        <Text style={styles.reservaNombre}>
+          {getNombreCentroDeportivo(item.centroDeportivoId)} - {getNombreCancha(item.canchaId)}
+        </Text>
+        <Text style={styles.reservaFecha}>
+          {format(item.fecha, 'EEEE, d MMMM yyyy', { locale: es })}
+        </Text>
       </View>
-
-      {/* Selector de fecha */}
-      <TouchableOpacity 
-        style={styles.dateSelector}
-        onPress={() => setShowDatePicker(true)}
-      >
-        <Ionicons name="calendar" size={24} color="#2f95dc" />
-        <Text style={styles.dateText}>
-          {selectedDate.toLocaleDateString('es-MX', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}
+      
+      <View style={styles.reservaInfo}>
+        <Text style={styles.reservaHorario}>
+          {format(item.horaInicio, 'HH:mm')} - {format(item.horaFin, 'HH:mm')}
         </Text>
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )}
-      </TouchableOpacity>
-
-      {/* Selector de hora */}
-      <TouchableOpacity 
-        style={styles.timeSelector}
-        onPress={() => setShowTimePicker(true)}
-      >
-        <Ionicons name="time" size={24} color="#2f95dc" />
-        <Text style={styles.timeText}>
-          {horaInicio.toLocaleTimeString('es-MX', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })} - {horaFin.toLocaleTimeString('es-MX', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
+        <Text style={styles.reservaUsuario}>
+          Reservado por: {getNombreUsuario(item.reservadorId)}
         </Text>
-        {showTimePicker && (
-          <DateTimePicker
-            value={horaInicio}
-            mode="time"
-            display="default"
-            onChange={handleTimeChange}
-          />
-        )}
-      </TouchableOpacity>
-
-      {/* Lista de centros deportivos */}
-      <Text style={styles.sectionTitle}>CENTROS DEPORTIVOS</Text>
-      <FlatList
-        horizontal
-        data={centrosDeportivos}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={[
-              styles.centroCard,
-              selectedCentro?.id === item.id && styles.selectedCentroCard
-            ]}
-            onPress={() => {
-              setSelectedCentro(item);
-              setSelectedCancha(null);
-              setCanchasDisponibles(item.canchas);
-            }}
-          >
-            <Image 
-              source={{ uri: item.imagenUrl || 'https://via.placeholder.com/150' }} 
-              style={styles.centroImage}
-            />
-            <Text style={styles.centroName}>{item.nombre}</Text>
-            <Text style={styles.centroLocation}>{item.ubicacion}</Text>
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={styles.centrosList}
-      />
-
-      {/* Canchas disponibles */}
-      {selectedCentro && (
-        <>
-          <Text style={styles.sectionTitle}>CANCHAS DISPONIBLES</Text>
-          <FlatList
-            data={canchasDisponibles}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={[
-                  styles.canchaCard,
-                  selectedCancha?.id === item.id && styles.selectedCanchaCard
-                ]}
-                onPress={() => setSelectedCancha(item)}
-              >
-                <Image 
-                  source={{ uri: item.imagenUrl || 'https://via.placeholder.com/150' }} 
-                  style={styles.canchaImage}
-                />
-                <View style={styles.canchaInfo}>
-                  <Text style={styles.canchaName}>{item.nombre}</Text>
-                  <Text style={styles.canchaDetails}>
-                    {item.deporte} • {item.jugadores} jugadores • 
-                    {item.alumbrado ? ' Con alumbrado' : ' Sin alumbrado'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.canchasList}
-          />
-        </>
+      </View>
+      
+      {item.objetosRentados.length > 0 && (
+        <Text style={styles.reservaObjetos}>
+          Objetos rentados: {item.objetosRentados.length}
+        </Text>
       )}
+    </TouchableOpacity>
+  );
 
-      {/* Botón de reserva */}
-      {selectedCancha && (
-        <TouchableOpacity 
-          style={styles.reservarButton}
-          onPress={handleReservar}
-        >
-          <Text style={styles.reservarButtonText}>CONFIRMAR RESERVA</Text>
-          <Ionicons name="arrow-forward" size={24} color="white" />
-        </TouchableOpacity>
-      )}
-
-      {/* Vista previa de la reserva (similar a tu diseño) */}
-      {selectedCancha && (
-        <View style={styles.reservaPreview}>
-          <Text style={styles.previewTitle}>DETALLES DE LA RESERVA</Text>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewLabel}>Deporte:</Text>
-            <Text style={styles.previewValue}>{selectedCancha.deporte}</Text>
-          </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewLabel}>Fecha:</Text>
-            <Text style={styles.previewValue}>
-              {selectedDate.toLocaleDateString('es-MX', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </Text>
-          </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewLabel}>Horario:</Text>
-            <Text style={styles.previewValue}>
-              {horaInicio.toLocaleTimeString('es-MX', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })} - {horaFin.toLocaleTimeString('es-MX', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </Text>
-          </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewLabel}>Cancha:</Text>
-            <Text style={styles.previewValue}>{selectedCancha.nombre}</Text>
-          </View>
-          <View style={styles.previewRow}>
-            <Text style={styles.previewLabel}>Ubicación:</Text>
-            <Text style={styles.previewValue}>{selectedCentro.ubicacion}</Text>
+  const renderCentrosTab = () => (
+    <FlatList
+      data={CENTROS_DEPORTIVOS}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={styles.centroCard}>
+          <Image source={{ uri: item.imagenUrl }} style={styles.centroImagen} />
+          <View style={styles.centroInfo}>
+            <Text style={styles.centroNombre}>{item.nombre}</Text>
+            <Text style={styles.centroUbicacion}>{item.ubicacion}</Text>
+            <Text style={styles.centroCancha}>Canchas disponibles: {CANCHAS.filter(c => c.centroDeportivoId === item.id).length}</Text>
           </View>
         </View>
       )}
-    </ScrollView>
+    />
+  );
+
+  const renderCanchasTab = () => (
+    <FlatList
+      data={CANCHAS}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={styles.canchaCard}>
+          <Image source={{ uri: item.imagenUrl }} style={styles.canchaImagen} />
+          <View style={styles.canchaInfo}>
+            <Text style={styles.canchaDeporte}>{item.deporte}</Text>
+            <Text style={styles.canchaNombre}>{item.nombre} - {getNombreCentroDeportivo(item.centroDeportivoId)}</Text>
+            <View style={styles.canchaDetalles}>
+              <Text style={styles.canchaJugadores}>Para {item.jugadores} jugadores</Text>
+              <Text style={styles.canchaAlumbrado}>
+                {item.alumbrado ? '✓ Con alumbrado' : '✗ Sin alumbrado'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+    />
+  );
+
+  const renderReservasTab = () => (
+    <FlatList
+      data={RESERVAS}
+      keyExtractor={(item) => item.id}
+      renderItem={renderReservaItem}
+    />
+  );
+
+  const DetalleReservaModal = () => {
+    if (!selectedReserva) return null;
+
+    const centro = CENTROS_DEPORTIVOS.find(c => c.id === selectedReserva.centroDeportivoId);
+    const cancha = CANCHAS.find(c => c.id === selectedReserva.canchaId);
+    const usuario = USUARIOS.find(u => u.id === selectedReserva.reservadorId);
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Detalle de Reserva</Text>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Centro Deportivo:</Text>
+              <Text style={styles.modalText}>{centro?.nombre}</Text>
+              <Text style={styles.modalText}>{centro?.ubicacion}</Text>
+            </View>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Cancha:</Text>
+              <Text style={styles.modalText}>{cancha?.nombre} ({cancha?.deporte})</Text>
+              <Text style={styles.modalText}>
+                Para {cancha?.jugadores} jugadores - {cancha?.alumbrado ? 'Con alumbrado' : 'Sin alumbrado'}
+              </Text>
+            </View>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Fecha y Hora:</Text>
+              <Text style={styles.modalText}>
+                {format(selectedReserva.fecha, 'EEEE, d MMMM yyyy', { locale: es })}
+              </Text>
+              <Text style={styles.modalText}>
+                {format(selectedReserva.horaInicio, 'HH:mm')} - {format(selectedReserva.horaFin, 'HH:mm')}
+              </Text>
+            </View>
+            
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Reservado por:</Text>
+              <Text style={styles.modalText}>{usuario?.nombre}</Text>
+              <Text style={styles.modalText}>{usuario?.email}</Text>
+              <Text style={styles.modalText}>{usuario?.telefono}</Text>
+            </View>
+            
+            {selectedReserva.objetosRentados.length > 0 && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Objetos Rentados:</Text>
+                {selectedReserva.objetosRentados.map((obj) => (
+                  <View key={obj.id} style={styles.objetoRentado}>
+                    <Image source={{ uri: obj.imagenUrl }} style={styles.objetoImagen} />
+                    <View style={styles.objetoInfo}>
+                      <Text style={styles.objetoNombre}>{obj.nombre}</Text>
+                      <Text style={styles.objetoCantidad}>Cantidad: {obj.cantidad}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={styles.buttonCerrar}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.buttonText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Reservas Deportivas</Text>
+      </View>
+      
+      <View style={styles.content}>
+        {selectedTab === 'centros' && renderCentrosTab()}
+        {selectedTab === 'canchas' && renderCanchasTab()}
+        {selectedTab === 'reservas' && renderReservasTab()}
+      </View>
+      
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'centros' && styles.tabSelected]}
+          onPress={() => setSelectedTab('centros')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'centros' && styles.tabTextSelected]}>
+            Centros
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'canchas' && styles.tabSelected]}
+          onPress={() => setSelectedTab('canchas')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'canchas' && styles.tabTextSelected]}>
+            Canchas
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'reservas' && styles.tabSelected]}
+          onPress={() => setSelectedTab('reservas')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'reservas' && styles.tabTextSelected]}>
+            Reservas
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <DetalleReservaModal />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    marginBottom: 20,
+    backgroundColor: '#2196F3',
+    padding: 15,
     alignItems: 'center',
+    elevation: 4,
   },
-  headerTitle: {
-    fontSize: 24,
+  title: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#2f95dc',
+    color: 'white',
   },
-  dateSelector: {
+  content: {
+    flex: 1,
+    padding: 10,
+  },
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 10,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    elevation: 8,
   },
-  dateText: {
-    marginLeft: 10,
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  tabSelected: {
+    borderTopWidth: 2,
+    borderTopColor: '#2196F3',
+  },
+  tabText: {
+    color: '#757575',
     fontSize: 16,
   },
-  timeSelector: {
+  tabTextSelected: {
+    color: '#2196F3',
+    fontWeight: 'bold',
+  },
+  
+  // Estilos para los centros deportivos
+  centroCard: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 15,
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 2,
   },
-  timeText: {
-    marginLeft: 10,
-    fontSize: 16,
+  centroImagen: {
+    width: 100,
+    height: 100,
   },
-  sectionTitle: {
+  centroInfo: {
+    flex: 1,
+    padding: 15,
+    justifyContent: 'center',
+  },
+  centroNombre: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 5,
   },
-  centrosList: {
-    paddingBottom: 10,
-  },
-  centroCard: {
-    width: 200,
-    marginRight: 15,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  selectedCentroCard: {
-    borderWidth: 2,
-    borderColor: '#2f95dc',
-  },
-  centroImage: {
-    width: '100%',
-    height: 120,
-  },
-  centroName: {
-    padding: 10,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  centroLocation: {
-    padding: 10,
-    paddingTop: 0,
+  centroUbicacion: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575',
+    marginBottom: 5,
   },
-  canchasList: {
-    paddingBottom: 20,
+  centroCancha: {
+    fontSize: 14,
+    color: '#2196F3',
   },
+  
+  // Estilos para las canchas
   canchaCard: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 15,
     flexDirection: 'row',
-    marginBottom: 10,
-    borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  selectedCanchaCard: {
-    borderWidth: 2,
-    borderColor: '#2f95dc',
-  },
-  canchaImage: {
+  canchaImagen: {
     width: 100,
     height: 100,
   },
   canchaInfo: {
     flex: 1,
-    padding: 10,
+    padding: 15,
     justifyContent: 'center',
   },
-  canchaName: {
-    fontSize: 16,
+  canchaDeporte: {
+    fontSize: 14,
+    color: '#2196F3',
     fontWeight: 'bold',
     marginBottom: 5,
   },
-  canchaDetails: {
-    fontSize: 14,
-    color: '#666',
+  canchaNombre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  reservarButton: {
+  canchaDetalles: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  canchaJugadores: {
+    fontSize: 14,
+    color: '#757575',
+  },
+  canchaAlumbrado: {
+    fontSize: 14,
+    color: '#757575',
+  },
+  
+  // Estilos para las reservas
+  reservaCard: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 15,
+    padding: 15,
+    elevation: 2,
+  },
+  reservaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  reservaNombre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  reservaFecha: {
+    fontSize: 14,
+    color: '#2196F3',
+  },
+  reservaInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  reservaHorario: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  reservaUsuario: {
+    fontSize: 14,
+    color: '#757575',
+  },
+  reservaObjetos: {
+    fontSize: 14,
+    color: '#4CAF50',
+  },
+  
+  // Modal de detalle
+  modalContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#2f95dc',
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  reservarButtonText: {
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalSection: {
+    marginBottom: 15,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#2196F3',
+  },
+  modalText: {
+    fontSize: 14,
+    marginBottom: 3,
+  },
+  objetoRentado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  objetoImagen: {
+    width: 40,
+    height: 40,
+    borderRadius: 5,
+  },
+  objetoInfo: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  objetoNombre: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  objetoCantidad: {
+    fontSize: 12,
+    color: '#757575',
+  },
+  buttonCerrar: {
+    backgroundColor: '#2196F3',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 10,
-  },
-  reservaPreview: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 15,
-    marginTop: 10,
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#2f95dc',
-    textAlign: 'center',
-  },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  previewLabel: {
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  previewValue: {
-    color: '#333',
   },
 });
 
-export default ReservasScreen;
+export default reservas;

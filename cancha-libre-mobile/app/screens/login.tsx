@@ -3,7 +3,8 @@ import { View, Text, TextInput, Alert, ActivityIndicator, StyleSheet, TouchableO
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as SecureStore from 'expo-secure-store';
-import api from "../../services/api"; // Asegúrate de importar tu instancia de api
+import api from "../../services/api"; // Importación del API
+import axios from 'axios'; // Importar axios directamente como respaldo
 import LogoTitle from "../../components/LogoTitle";
 import FormLabel from "../../components/FormLabel";
 import OrangeCirclesFooter from "../../components/OrangeCirclesFooter";
@@ -30,20 +31,35 @@ export default function LoginScreen() {
     setLoading(true);
   
     try {
-      const response = await api.post('/auth/login', {
-        correo: email,
-        clave: password
-      });
+      console.log("Intentando hacer login...");
+      
+      // Verificar si api está definido correctamente
+      let response;
+      if (!api || typeof api.post !== 'function') {
+        console.log("Usando axios directamente porque api.post no está disponible");
+        response = await axios.post('http://192.168.100.13:3000/api/auth/login', {
+          correo: email,
+          clave: password
+        });
+      } else {
+        console.log("Usando la instancia api configurada");
+        response = await api.post('/auth/login', {
+          correo: email,
+          clave: password
+        });
+      }
+      
+      console.log("Respuesta recibida:", response.data);
   
       // Verificación más robusta de la respuesta
-      if (!response?.token || !response?.usuario) {
+      if (!response.data?.token || !response.data?.usuario) {
         throw new Error('Respuesta incompleta del servidor');
       }
   
       // Guardar token y datos de usuario
       await Promise.all([
-        SecureStore.setItemAsync('userToken', response.token),
-        SecureStore.setItemAsync('userData', JSON.stringify(response.usuario))
+        SecureStore.setItemAsync('userToken', response.data.token),
+        SecureStore.setItemAsync('userData', JSON.stringify(response.data.usuario))
       ]);
       
       // Redirigir al home sin posibilidad de volver atrás
@@ -52,11 +68,11 @@ export default function LoginScreen() {
       // Mostrar bienvenida
       Alert.alert(
         "Bienvenido",
-        `Hola ${response.usuario.nombre}!`,
+        `Hola ${response.data.usuario.nombre}!`,
         [{ text: "Continuar" }]
       );
   
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error de autenticación:", error);
       
       let errorMessage = "Error al iniciar sesión. Por favor intenta nuevamente.";
@@ -77,6 +93,7 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
   const handleRegister = () => {
     router.push("/screens/registro");
   };

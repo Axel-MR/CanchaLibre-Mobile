@@ -89,6 +89,9 @@ export default function RegisterScreen() {
     setLoading(true);
   
     try {
+      console.log("Enviando solicitud de registro...");
+      
+      // Preparar datos para enviar
       const userData = {
         correo: formData.correo,
         clave: formData.clave,
@@ -96,31 +99,62 @@ export default function RegisterScreen() {
         telefono: formData.telefono,
         clave_ine: formData.clave_ine,
         rol: 'usuario'
-        // (opcionalmente añade los otros campos si los necesitas)
       };
+      
+      // Agregar campos opcionales si tienen valor
+      if (formData.edad) userData.edad = parseInt(formData.edad.toString());
+      if (formData.sexo) userData.sexo = formData.sexo;
+      if (formData.estatura) userData.estatura = parseFloat(formData.estatura.toString());
+      if (formData.peso) userData.peso = parseFloat(formData.peso.toString());
+      if (formData.ejercicio_semanal) userData.ejercicio_semanal = parseInt(formData.ejercicio_semanal.toString());
   
+      console.log("Datos a enviar:", userData);
+      
       const response = await api.post('/auth/registro', userData);
   
-      // Verificación MÁS ESTRICTA de la respuesta
-      if (!response.data?.success || !response.data?.token || !response.data?.usuario) {
+      console.log("Respuesta completa:", response.data);
+  
+      // Verificación adaptada a la estructura real de la respuesta
+      // El usuario está directamente en response.data
+      if (!response.data?.id || !response.data?.correo) {
         throw new Error('Respuesta incompleta del servidor');
       }
   
+      // Ahora necesitamos obtener un token, dos opciones:
+      // 1. Si tu API devuelve un token en otro lugar de la respuesta, úsalo
+      // 2. Si no, podemos hacer un login automático para obtener el token
+      
+      // Opción 2: Login automático para obtener token
+      const loginResponse = await api.post('/auth/login', {
+        correo: formData.correo,
+        clave: formData.clave
+      });
+      
+      console.log("Respuesta de login:", loginResponse.data);
+      
+      if (!loginResponse.data?.token) {
+        throw new Error('No se pudo obtener un token de acceso');
+      }
+      
       // Guardar datos
-      await SecureStore.setItemAsync('userToken', response.data.token);
-      await SecureStore.setItemAsync('userData', JSON.stringify(response.data.usuario));
+      await SecureStore.setItemAsync('userToken', loginResponse.data.token);
+      await SecureStore.setItemAsync('userData', JSON.stringify(response.data));
   
       // Redirección
       router.replace('/screens/home');
       
-      // Opcional: Mostrar mensaje de éxito
-      Alert.alert('¡Registro exitoso!', `Bienvenido ${response.data.usuario.nombre}`);
+      // Mostrar mensaje de éxito
+      Alert.alert('¡Registro exitoso!', `Bienvenido ${response.data.nombre}`);
   
-    } catch (error: any) {
-      let errorMessage = 'Error al registrar';
+    } catch (error) {
+      console.error("Error de registro:", error);
+      
+      let errorMessage = 'Error al registrar usuario';
       
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
+      } else if (error.response?.status === 409) {
+        errorMessage = "Este correo electrónico ya está registrado";
       } else if (error.message) {
         errorMessage = error.message;
       }
