@@ -84,72 +84,48 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    // 1. Validación de campos
     if (!validateRequiredFields()) return;
   
     setLoading(true);
   
     try {
-      // 2. Preparar datos para el backend
       const userData = {
         correo: formData.correo,
         clave: formData.clave,
         nombre: formData.nombre,
         telefono: formData.telefono,
         clave_ine: formData.clave_ine,
-        ...(formData.edad && { edad: Number(formData.edad) }),
-        ...(formData.sexo && { sexo: formData.sexo }),
-        ...(formData.estatura && { estatura: Number(formData.estatura) }),
-        ...(formData.peso && { peso: Number(formData.peso) }),
-        ...(formData.ejercicio_semanal && { 
-          ejercicio_semanal: Number(formData.ejercicio_semanal) 
-        }),
-        rol: 'usuario' // Valor por defecto
+        rol: 'usuario'
+        // (opcionalmente añade los otros campos si los necesitas)
       };
   
-      console.log('Enviando datos de registro:', userData);
-  
-      // 3. Llamada al endpoint
       const response = await api.post('/auth/registro', userData);
   
-      // 4. Manejo de respuesta exitosa
-      if (response.data?.token && response.data?.usuario) {
-        // Guardar token y datos de usuario
-        await Promise.all([
-          SecureStore.setItemAsync('userToken', response.data.token),
-          SecureStore.setItemAsync('userData', JSON.stringify(response.data.usuario))
-        ]);
-  
-        // Redirección y feedback al usuario
-        router.replace('/screens/home'); // Asegúrate que esta ruta existe en tu app
-        
-        Alert.alert(
-          '¡Registro exitoso!',
-          `Bienvenido ${response.data.usuario.nombre}`,
-          [{ text: 'Continuar' }]
-        );
-      } else {
-        throw new Error('Respuesta inesperada del servidor');
+      // Verificación MÁS ESTRICTA de la respuesta
+      if (!response.data?.success || !response.data?.token || !response.data?.usuario) {
+        throw new Error('Respuesta incompleta del servidor');
       }
+  
+      // Guardar datos
+      await SecureStore.setItemAsync('userToken', response.data.token);
+      await SecureStore.setItemAsync('userData', JSON.stringify(response.data.usuario));
+  
+      // Redirección
+      router.replace('/screens/home');
+      
+      // Opcional: Mostrar mensaje de éxito
+      Alert.alert('¡Registro exitoso!', `Bienvenido ${response.data.usuario.nombre}`);
   
     } catch (error: any) {
-      // 5. Manejo detallado de errores
-      console.error('Error en registro:', error);
+      let errorMessage = 'Error al registrar';
       
-      let errorMessage = 'Error al registrar. Por favor intenta nuevamente.';
-      
-      // Manejo específico de errores de axios
-      if (error.response) {
-        errorMessage = error.response.data?.message || 
-                      error.response.data?.error || 
-                      `Error ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = 'No se recibió respuesta del servidor';
-      } else if (error.message.includes('Network Error')) {
-        errorMessage = 'Problema de conexión. Verifica tu internet';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
   
-      Alert.alert('Error en registro', errorMessage);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

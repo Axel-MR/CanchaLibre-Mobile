@@ -3,83 +3,155 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-exports.login = async (req, res) => {
-  console.log('📥 Solicitud POST a /login recibida');
-  console.log('Cuerpo de la solicitud:', req.body);
-
+// Controlador para registro de usuarios
+exports.crearUsuario = async (req, res) => {
   try {
-    const { correo, clave } = req.body;
-    
-    // Validación mejorada
-    if (!correo?.trim() || !clave?.trim()) {
-      console.log('❌ Faltan credenciales');
-      return res.status(400).json({ 
+    // 1. Validación básica
+    if (!req.body.correo || !req.body.clave || !req.body.nombre || !req.body.telefono || !req.body.clave_ine) {
+      return res.status(400).json({
         success: false,
-        message: 'Correo y contraseña son requeridos' 
+        error: 'Todos los campos obligatorios son requeridos'
       });
     }
 
-    // Buscar usuario incluyendo solo campos necesarios
-    const usuario = await prisma.usuarios.findUnique({
-      where: { correo },
-      select: {
-        id: true,
-        correo: true,
-        clave: true, // Necesario para comparar
-        nombre: true,
-        rol: true
+    // 2. Hashear la contraseña
+    const hashedPassword = await bcrypt.hash(req.body.clave, 10);
+
+    // 3. Crear el usuario
+    const usuario = await prisma.usuarios.create({
+      data: {
+        correo: req.body.correo,
+        clave: hashedPassword,
+        nombre: req.body.nombre,
+        telefono: req.body.telefono,
+        clave_ine: req.body.clave_ine,
+        edad: req.body.edad || null,
+        sexo: req.body.sexo || null,
+        estatura: req.body.estatura || null,
+        peso: req.body.peso || null,
+        ejercicio_semanal: req.body.ejercicio_semanal || null,
+        rol: req.body.rol || 'usuario',
+        reservasHechas: 0,
+        faltas: 0,
+        avatarUrl: null
       }
     });
 
-    if (!usuario) {
-      console.log('❌ Usuario no encontrado:', correo);
-      return res.status(401).json({ 
-        success: false,
-        message: 'Credenciales inválidas' 
-      });
-    }
-
-    // Comparación segura de contraseñas
-    const claveValida = await bcrypt.compare(clave, usuario.clave);
-    if (!claveValida) {
-      console.log('❌ Contraseña incorrecta para:', correo);
-      return res.status(401).json({ 
-        success: false,
-        message: 'Credenciales inválidas' 
-      });
-    }
-
-    // Generar token JWT
+    // 4. Generar token JWT
     const token = jwt.sign(
       { 
         userId: usuario.id, 
         rol: usuario.rol 
       },
-      process.env.JWT_SECRET || 'fallback_secret', // Usa un valor por defecto solo para desarrollo
+      process.env.JWT_SECRET || 'fallback_secret_para_desarrollo',
       { expiresIn: '7d' }
     );
 
-    console.log('✅ Login exitoso para:', correo);
+    // 5. Responder con formato estandarizado
+    res.status(201).json({
+      success: true,
+      message: 'Usuario registrado con éxito',
+      token: token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: usuario.rol,
+        telefono: usuario.telefono
+      },
+      expiresIn: '7d'
+    });
+
+  } catch (error) {
+    console.error('Error en registro:', error);
     
-    // Excluir la contraseña del objeto de usuario
+    // Manejo de errores específicos de Prisma
+    if (error.code === 'P2002') {
+      const conflictField = error.meta?.target?.includes('correo') ? 'correo' : 'clave_ine';
+      return res.status(400).json({
+        success: false,
+        error: `El ${conflictField} ya está registrado`
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Controlador para login de usuarios
+exports.login = async (req, res) => {
+  try {
+    const { correo, clave } = req.body;
+    
+    // 1. Validación de entrada
+    if (!correo?.trim() || !clave?.trim()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Correo y contraseña son requeridos' 
+      });
+    }
+
+    // 2. Buscar usuario
+    const usuario = await prisma.usuarios.findUnique({
+      where: { correo },
+      select: {
+        id: true,
+        correo: true,
+        clave: true,
+        nombre: true,
+        rol: true,
+        telefono: true
+      }
+    });
+
+    if (!usuario) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Credenciales inválidas' 
+      });
+    }
+
+    // 3. Verificar contraseña
+    const claveValida = await bcrypt.compare(clave, usuario.clave);
+    if (!claveValida) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Credenciales inválidas' 
+      });
+    }
+
+    // 4. Generar token JWT
+    const token = jwt.sign(
+      { 
+        userId: usuario.id, 
+        rol: usuario.rol 
+      },
+      process.env.JWT_SECRET || 'fallback_secret_para_desarrollo',
+      { expiresIn: '7d' }
+    );
+
+    // 5. Excluir la contraseña de la respuesta
     const { clave: _, ...usuarioSinClave } = usuario;
     
+    // 6. Responder con el mismo formato que el registro
     res.json({
       success: true,
+      message: 'Inicio de sesión exitoso',
       token,
       usuario: usuarioSinClave,
       expiresIn: '7d'
     });
 
   } catch (error) {
-    console.error('🔥 Error en login:', error);
-    res.status(500).json({ 
+    console.error('Error en login:', error);
+    res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
-      ...(process.env.NODE_ENV === 'development' && {
-        error: error.message,
-        stack: error.stack
-      })
+      error: 'Error en el servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

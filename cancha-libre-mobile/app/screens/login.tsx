@@ -20,53 +20,55 @@ export default function LoginScreen() {
       Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
-
-    // Validación básica de email
+  
+    // Validación mejorada de email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       Alert.alert("Error", "Por favor ingresa un correo electrónico válido");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
-      // Llamada real a la API
       const response = await api.post('/auth/login', {
         correo: email,
         clave: password
       });
-
-      if (response.token && response.usuario) {
-        // Guardar token y datos de usuario
-        await Promise.all([
-          SecureStore.setItemAsync('userToken', response.token),
-          SecureStore.setItemAsync('userData', JSON.stringify(response.usuario))
-        ]);
-        
-        // Redirigir al home y limpiar stack
-        router.replace("/screens/home");
-        
-        Alert.alert(
-          "Bienvenido",
-          `Hola ${response.usuario.nombre}`,
-          [{ text: "Continuar" }]
-        );
-      } else {
-        throw new Error("Respuesta inesperada del servidor");
+  
+      // Verificación más robusta de la respuesta
+      if (!response?.token || !response?.usuario) {
+        throw new Error('Respuesta incompleta del servidor');
       }
+  
+      // Guardar token y datos de usuario
+      await Promise.all([
+        SecureStore.setItemAsync('userToken', response.token),
+        SecureStore.setItemAsync('userData', JSON.stringify(response.usuario))
+      ]);
+      
+      // Redirigir al home sin posibilidad de volver atrás
+      router.replace("/screens/home");
+      
+      // Mostrar bienvenida
+      Alert.alert(
+        "Bienvenido",
+        `Hola ${response.usuario.nombre}!`,
+        [{ text: "Continuar" }]
+      );
+  
     } catch (error: any) {
       console.error("Error de autenticación:", error);
       
       let errorMessage = "Error al iniciar sesión. Por favor intenta nuevamente.";
       
-      if (error.response) {
-        // Manejo de errores específicos del backend
-        if (error.response.status === 401) {
-          errorMessage = "Credenciales incorrectas";
-        } else if (error.response.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-      } else if (error.message.includes("Network Error")) {
+      // Manejo mejorado de errores
+      if (error.response?.status === 401) {
+        errorMessage = "Credenciales incorrectas";
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.isNetworkError) {
         errorMessage = "Problema de conexión. Verifica tu internet";
       }
       
@@ -75,7 +77,6 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
-
   const handleRegister = () => {
     router.push("/screens/registro");
   };

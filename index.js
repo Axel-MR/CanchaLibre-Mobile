@@ -11,7 +11,11 @@ const prisma = new PrismaClient();
 
 // Middlewares (en orden correcto)
 app.use(helmet()); // Seguridad básica
-app.use(cors()); // Configura CORS para React Native
+app.use(cors({
+  origin: '*',
+  methods: ['POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(morgan('dev')); // Logging de requests
 app.use(express.json()); // Parseo de JSON
 
