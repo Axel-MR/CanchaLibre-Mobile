@@ -26,8 +26,17 @@ prisma.$connect()
 
 // Importar y usar rutas
 const authRoutes = require('./routes/authRoutes');
-app.use('/api/auth', authRoutes);
+const centroDeportivoRoutes = require('./routes/centroDeportivoRoutes'); // Añade esta línea
 
+app.use('/api/auth', authRoutes);
+app.use('/api/centros-deportivos', centroDeportivoRoutes); // Añade esta línea
+
+// Actualiza CORS para permitir todos los métodos necesarios
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Actualizado
+  allowedHeaders: ['Content-Type', 'Authorization'] // Añade Authorization
+}));
 // Manejo de errores global
 app.use((err, req, res, next) => {
   console.error('🔥 Error global:', err);
@@ -52,3 +61,26 @@ process.on('SIGINT', async () => {
   await prisma.$disconnect();
   process.exit();
 });
+
+//Crear Centros Deportivos
+const crearCentroDeportivo = async (req, res) => {
+  try {
+    const { nombre, ubicacion, imagenUrl, imagenNombre, imagenTamaño, imagenTipo } = req.body;
+    
+    const nuevoCentro = await prisma.centroDeportivo.create({
+      data: {
+        nombre,
+        ubicacion,
+        imagenUrl,
+        imagenNombre,
+        imagenTamaño,
+        imagenTipo
+      }
+    });
+    
+    res.status(201).json(nuevoCentro);
+  } catch (error) {
+    console.error('Error al crear centro deportivo:', error);
+    res.status(500).json({ error: 'Error al crear centro deportivo' });
+  }
+};

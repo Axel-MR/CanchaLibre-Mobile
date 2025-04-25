@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,25 +7,27 @@ import {
   SafeAreaView,
   FlatList,
   TouchableOpacity,
-  ScrollView,
   Modal,
+  Alert
 } from 'react-native';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
 
 // Mock data (reemplazar por llamadas a la API)
 const CENTROS_DEPORTIVOS = [
   {
     id: '1',
-    nombre: 'Centro Deportivo Libertad',
+    nombre: 'Deportivo 1° de Mayo',
     ubicacion: 'Av. Libertad 1200',
-    imagenUrl: 'https://via.placeholder.com/150',
+    imagenUrl: 'https://via.placeholder.com/400x200',
   },
   {
     id: '2',
     nombre: 'Complejo Municipal',
     ubicacion: 'Calle Principal 500',
-    imagenUrl: 'https://via.placeholder.com/150',
+    imagenUrl: 'https://via.placeholder.com/400x200',
   },
 ];
 
@@ -33,10 +35,10 @@ const CANCHAS = [
   {
     id: '1',
     nombre: 'Cancha 1',
-    deporte: 'Fútbol',
+    deporte: 'Fútbol Rápido',
     alumbrado: true,
     jugadores: 10,
-    imagenUrl: 'https://via.placeholder.com/150',
+    imagenUrl: 'https://via.placeholder.com/400x200',
     centroDeportivoId: '1',
   },
   {
@@ -45,7 +47,7 @@ const CANCHAS = [
     deporte: 'Tenis',
     alumbrado: true,
     jugadores: 2,
-    imagenUrl: 'https://via.placeholder.com/150',
+    imagenUrl: 'https://via.placeholder.com/400x200',
     centroDeportivoId: '1',
   },
   {
@@ -54,7 +56,7 @@ const CANCHAS = [
     deporte: 'Básquet',
     alumbrado: false,
     jugadores: 10,
-    imagenUrl: 'https://via.placeholder.com/150',
+    imagenUrl: 'https://via.placeholder.com/400x200',
     centroDeportivoId: '2',
   },
 ];
@@ -62,16 +64,12 @@ const CANCHAS = [
 const RESERVAS = [
   {
     id: '1',
-    fecha: new Date(2025, 3, 24), // 24 de abril de 2025
-    horaInicio: new Date(2025, 3, 24, 16, 0), // 16:00
-    horaFin: new Date(2025, 3, 24, 18, 0), // 18:00
+    fecha: new Date(2025, 1, 20), // 20 de febrero de 2025
+    horaInicio: new Date(2025, 1, 20, 21, 0), // 21:00
+    horaFin: new Date(2025, 1, 20, 22, 0), // 22:00
     centroDeportivoId: '1',
     canchaId: '1',
     reservadorId: '1',
-    objetosRentados: [
-      { id: '1', nombre: 'Balón de fútbol', cantidad: 1, imagenUrl: 'https://via.placeholder.com/50' },
-      { id: '2', nombre: 'Chaleco', cantidad: 10, imagenUrl: 'https://via.placeholder.com/50' },
-    ],
   },
   {
     id: '2',
@@ -81,7 +79,6 @@ const RESERVAS = [
     centroDeportivoId: '1',
     canchaId: '2',
     reservadorId: '1',
-    objetosRentados: [],
   },
   {
     id: '3',
@@ -91,9 +88,6 @@ const RESERVAS = [
     centroDeportivoId: '2',
     canchaId: '3',
     reservadorId: '1',
-    objetosRentados: [
-      { id: '3', nombre: 'Balón de básquet', cantidad: 1, imagenUrl: 'https://via.placeholder.com/50' },
-    ],
   },
 ];
 
@@ -106,11 +100,32 @@ const USUARIOS = [
   }
 ];
 
-// Componentes
-const reservas = () => {
+// Componente principal
+const Reservas = () => {
   const [selectedTab, setSelectedTab] = useState('reservas');
   const [selectedReserva, setSelectedReserva] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+
+  const navigateToCrearReservas = () => {
+    console.log("Intentando navegar a Reservas...");
+    try {
+      router.push("/screens/crearReserva");
+    } catch (error) {
+      console.error("Error al navegar:", error);
+      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Reservas");
+    }
+  };
+
+  const navigateToCrearCentroDeportivo = () => {
+    console.log("Intentando navegar a Reservas...");
+    try {
+      router.push("/screens/crearCentroDeportivo");
+    } catch (error) {
+      console.error("Error al navegar:", error);
+      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Centros Deportivos");
+    }
+  };
 
   const verDetalleReserva = (reserva) => {
     setSelectedReserva(reserva);
@@ -127,41 +142,51 @@ const reservas = () => {
     return cancha ? cancha.nombre : 'Desconocida';
   };
 
-  const getNombreUsuario = (id) => {
-    const usuario = USUARIOS.find(u => u.id === id);
-    return usuario ? usuario.nombre : 'Desconocido';
+  const getDeporteCancha = (id) => {
+    const cancha = CANCHAS.find(c => c.id === id);
+    return cancha ? cancha.deporte : 'Desconocido';
   };
 
-  const renderReservaItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.reservaCard}
-      onPress={() => verDetalleReserva(item)}
-    >
-      <View style={styles.reservaHeader}>
-        <Text style={styles.reservaNombre}>
-          {getNombreCentroDeportivo(item.centroDeportivoId)} - {getNombreCancha(item.canchaId)}
-        </Text>
-        <Text style={styles.reservaFecha}>
-          {format(item.fecha, 'EEEE, d MMMM yyyy', { locale: es })}
-        </Text>
-      </View>
-      
-      <View style={styles.reservaInfo}>
-        <Text style={styles.reservaHorario}>
-          {format(item.horaInicio, 'HH:mm')} - {format(item.horaFin, 'HH:mm')}
-        </Text>
-        <Text style={styles.reservaUsuario}>
-          Reservado por: {getNombreUsuario(item.reservadorId)}
-        </Text>
-      </View>
-      
-      {item.objetosRentados.length > 0 && (
-        <Text style={styles.reservaObjetos}>
-          Objetos rentados: {item.objetosRentados.length}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
+  const renderReservaItem = ({ item }) => {
+    const centro = CENTROS_DEPORTIVOS.find(c => c.id === item.centroDeportivoId);
+    const cancha = CANCHAS.find(c => c.id === item.canchaId);
+
+    return (
+      <TouchableOpacity 
+        style={styles.reservaCard}
+        onPress={() => verDetalleReserva(item)}
+      >
+        <View style={styles.reservaContent}>
+          <Text style={styles.deporteTitulo}>{getDeporteCancha(item.canchaId)}</Text>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Fecha:</Text>
+            <Text style={styles.infoValue}>
+              {format(item.fecha, 'yyyy-MM-dd')}
+            </Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Hora:</Text>
+            <Text style={styles.infoValue}>
+              {format(item.horaInicio, 'HH:mm')} - {format(item.horaFin, 'HH:mm')}
+            </Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Centro Deportivo:</Text>
+            <Text style={styles.infoValue}>{centro?.nombre}</Text>
+          </View>
+        </View>
+        
+        <Image 
+          source={{ uri: centro?.imagenUrl }} 
+          style={styles.reservaImagen} 
+          resizeMode="cover"
+        />
+      </TouchableOpacity>
+    );
+  };
 
   const renderCentrosTab = () => (
     <FlatList
@@ -173,7 +198,9 @@ const reservas = () => {
           <View style={styles.centroInfo}>
             <Text style={styles.centroNombre}>{item.nombre}</Text>
             <Text style={styles.centroUbicacion}>{item.ubicacion}</Text>
-            <Text style={styles.centroCancha}>Canchas disponibles: {CANCHAS.filter(c => c.centroDeportivoId === item.id).length}</Text>
+            <Text style={styles.centroCancha}>
+              Canchas disponibles: {CANCHAS.filter(c => c.centroDeportivoId === item.id).length}
+            </Text>
           </View>
         </View>
       )}
@@ -189,7 +216,9 @@ const reservas = () => {
           <Image source={{ uri: item.imagenUrl }} style={styles.canchaImagen} />
           <View style={styles.canchaInfo}>
             <Text style={styles.canchaDeporte}>{item.deporte}</Text>
-            <Text style={styles.canchaNombre}>{item.nombre} - {getNombreCentroDeportivo(item.centroDeportivoId)}</Text>
+            <Text style={styles.canchaNombre}>
+              {item.nombre} - {getNombreCentroDeportivo(item.centroDeportivoId)}
+            </Text>
             <View style={styles.canchaDetalles}>
               <Text style={styles.canchaJugadores}>Para {item.jugadores} jugadores</Text>
               <Text style={styles.canchaAlumbrado}>
@@ -203,11 +232,29 @@ const reservas = () => {
   );
 
   const renderReservasTab = () => (
-    <FlatList
-      data={RESERVAS}
-      keyExtractor={(item) => item.id}
-      renderItem={renderReservaItem}
-    />
+    <>
+      <FlatList
+        data={RESERVAS}
+        keyExtractor={(item) => item.id}
+        renderItem={renderReservaItem}
+        contentContainerStyle={styles.reservasList}
+      />
+      <TouchableOpacity
+        style={styles.reserveButton}
+        onPress={navigateToCrearReservas}
+      >
+        <Text style={styles.reserveButtonText}>Crear Reserva</Text>
+        <Ionicons name="arrow-forward" size={20} color="white" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.reserveButton}
+        onPress={navigateToCrearCentroDeportivo}
+      >
+        <Text style={styles.reserveButtonText}>Crear Centro Deportivo</Text>
+        <Ionicons name="arrow-forward" size={20} color="white" />
+      </TouchableOpacity>
+    </>
   );
 
   const DetalleReservaModal = () => {
@@ -215,7 +262,6 @@ const reservas = () => {
 
     const centro = CENTROS_DEPORTIVOS.find(c => c.id === selectedReserva.centroDeportivoId);
     const cancha = CANCHAS.find(c => c.id === selectedReserva.canchaId);
-    const usuario = USUARIOS.find(u => u.id === selectedReserva.reservadorId);
 
     return (
       <Modal
@@ -252,28 +298,6 @@ const reservas = () => {
               </Text>
             </View>
             
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Reservado por:</Text>
-              <Text style={styles.modalText}>{usuario?.nombre}</Text>
-              <Text style={styles.modalText}>{usuario?.email}</Text>
-              <Text style={styles.modalText}>{usuario?.telefono}</Text>
-            </View>
-            
-            {selectedReserva.objetosRentados.length > 0 && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Objetos Rentados:</Text>
-                {selectedReserva.objetosRentados.map((obj) => (
-                  <View key={obj.id} style={styles.objetoRentado}>
-                    <Image source={{ uri: obj.imagenUrl }} style={styles.objetoImagen} />
-                    <View style={styles.objetoInfo}>
-                      <Text style={styles.objetoNombre}>{obj.nombre}</Text>
-                      <Text style={styles.objetoCantidad}>Cantidad: {obj.cantidad}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-            
             <TouchableOpacity
               style={styles.buttonCerrar}
               onPress={() => setModalVisible(false)}
@@ -289,7 +313,7 @@ const reservas = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Reservas Deportivas</Text>
+        <Text style={styles.title}>Reservas Disponibles</Text>
       </View>
       
       <View style={styles.content}>
@@ -376,8 +400,6 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     fontWeight: 'bold',
   },
-  
-  // Estilos para los centros deportivos
   centroCard: {
     backgroundColor: 'white',
     borderRadius: 10,
@@ -409,8 +431,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2196F3',
   },
-  
-  // Estilos para las canchas
   canchaCard: {
     backgroundColor: 'white',
     borderRadius: 10,
@@ -451,47 +471,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#757575',
   },
-  
-  // Estilos para las reservas
+  reservasList: {
+    padding: 10,
+  },
   reservaCard: {
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 15,
-    padding: 15,
+    overflow: 'hidden',
     elevation: 2,
+    flexDirection: 'column',
+    width: '100%',
   },
-  reservaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+  reservaContent: {
+    padding: 16,
   },
-  reservaNombre: {
-    fontSize: 16,
+  deporteTitulo: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
   },
-  reservaFecha: {
-    fontSize: 14,
-    color: '#2196F3',
-  },
-  reservaInfo: {
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  reservaHorario: {
+  infoLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
+    color: '#666',
+    width: 120,
   },
-  reservaUsuario: {
+  infoValue: {
     fontSize: 14,
-    color: '#757575',
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
   },
-  reservaObjetos: {
-    fontSize: 14,
-    color: '#4CAF50',
+  reservaImagen: {
+    width: '100%',
+    height: 180,
   },
-  
-  // Modal de detalle
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -524,28 +543,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 3,
   },
-  objetoRentado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 5,
-  },
-  objetoImagen: {
-    width: 40,
-    height: 40,
-    borderRadius: 5,
-  },
-  objetoInfo: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  objetoNombre: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  objetoCantidad: {
-    fontSize: 12,
-    color: '#757575',
-  },
   buttonCerrar: {
     backgroundColor: '#2196F3',
     padding: 12,
@@ -558,6 +555,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  reserveButton: {
+    backgroundColor: '#2196F3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    borderRadius: 8,
+    margin: 16,
+    elevation: 3,
+  },
+  reserveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
 });
 
-export default reservas;
+export default Reservas;
