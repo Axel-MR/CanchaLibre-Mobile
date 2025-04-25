@@ -8,32 +8,29 @@ import {
   Alert
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router"; // Cambiado a useRouter
+import { Link } from "expo-router";
 import LogoTitle from "../../components/LogoTitle";
-import MenuItem from "../../components/MenuItem";
+
+// Componente MenuItem modificado con Link
+const MenuItem = ({ icon, text, href }) => {
+  return (
+    <Link href={href} asChild>
+      <TouchableOpacity style={styles.menuItem}>
+        <Ionicons name={icon} size={24} color="#2f95dc" />
+        <Text style={styles.menuItemText}>{text}</Text>
+        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+      </TouchableOpacity>
+    </Link>
+  );
+};
 
 const Home = () => {
-  const router = useRouter(); // Usa useRouter
-
-  const navigateToReservas = () => {
-    console.log("Intentando navegar a Reservas...");
-    try {
-      // Intenta sin el slash inicial
-      router.push("/screens/reservas");
-    } catch (error) {
-      console.error("Error al navegar:", error);
-      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Reservas");
-    }
-  };
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Encabezado */}
       <View style={styles.header}>
         <LogoTitle title="CANCHA LIBRE" />
       </View>
 
-      {/* Mensaje principal */}
       <View style={styles.messageContainer}>
         <MaterialIcons
           name="sports-soccer"
@@ -49,43 +46,44 @@ const Home = () => {
         </Text>
       </View>
 
-      {/* Botón de reserva */}
-      <TouchableOpacity
-        style={styles.reserveButton}
-        onPress={navigateToReservas}
-      >
-        <Text style={styles.reserveButtonText}>Reservar Cancha</Text>
-        <Ionicons name="arrow-forward" size={20} color="white" />
-      </TouchableOpacity>
+      <Link href="/screens/reservas" asChild>
+        <TouchableOpacity style={styles.reserveButton}>
+          <Text style={styles.reserveButtonText}>Reservar Cancha</Text>
+          <Ionicons name="arrow-forward" size={20} color="white" />
+        </TouchableOpacity>
+      </Link>
 
-      {/* Menú */}
       <View style={styles.menuContainer}>
         <MenuItem
           icon="chatbubbles"
           text="Contáctanos"
-          onPress={() => router.push("/screens/contacto")}
+          href="/screens/contacto"
         />
         <MenuItem
           icon="calendar"
           text="Mis Actividades"
-          onPress={() => router.push("/screens/misActividades")}
+          href="/screens/misActividades"
         />
         <MenuItem
           icon="list"
           text="Mis Reservas"
-          onPress={() => router.push("/screens/misReservas")}
+          href="/screens/misReservas"
         />
         <MenuItem
           icon="person"
           text="Mi Perfil"
-          onPress={() => router.push("/screens/perfil")}
+          href="/screens/perfil"
+        />
+        <MenuItem
+          icon="settings"
+          text="Admin"
+          href="/screens/adminPage"
         />
       </View>
     </ScrollView>
   );
 };
 
-// Estilos (se mantienen igual)
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -137,6 +135,19 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     marginTop: 10,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  menuItemText: {
+    flex: 1,
+    marginLeft: 15,
+    fontSize: 16,
+    color: "#333",
   },
 });
 
