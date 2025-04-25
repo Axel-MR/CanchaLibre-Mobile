@@ -23,12 +23,12 @@ export default function AdminPage() {
         >
           <Text style={styles.buttonText}>Crear Reserva</Text>
         </TouchableOpacity>
-
+        
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push("/screens/editarCentrosDeportivos")}
+          onPress={() => router.push("/screens/adminCentrosDeportivos")}
         >
-          <Text style={styles.buttonText}>Editar Centro Deportivo</Text>
+          <Text style={styles.buttonText}>Ver Centro Deportivo</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert
+  Alert,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
@@ -64,21 +64,9 @@ const Home = () => {
           text="Mis Actividades"
           href="/screens/misActividades"
         />
-        <MenuItem
-          icon="list"
-          text="Mis Reservas"
-          href="/screens/misReservas"
-        />
-        <MenuItem
-          icon="person"
-          text="Mi Perfil"
-          href="/screens/perfil"
-        />
-        <MenuItem
-          icon="settings"
-          text="Admin"
-          href="/screens/adminPage"
-        />
+        <MenuItem icon="list" text="Mis Reservas" href="/screens/misReservas" />
+        <MenuItem icon="person" text="Mi Perfil" href="/screens/perfil" />
+        <MenuItem icon="settings" text="Admin" href="/screens/adminPage" />
       </View>
     </ScrollView>
   );
