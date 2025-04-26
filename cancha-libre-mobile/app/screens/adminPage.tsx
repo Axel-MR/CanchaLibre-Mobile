@@ -28,7 +28,7 @@ export default function AdminPage() {
           style={styles.button}
           onPress={() => router.push("/screens/adminCentrosDeportivos")}
         >
-          <Text style={styles.buttonText}>Ver Centro Deportivo</Text>
+          <Text style={styles.buttonText}>Editar Centros Deportivo</Text>
         </TouchableOpacity>
       </View>
     </View>

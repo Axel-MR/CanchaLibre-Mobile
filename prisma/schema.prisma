@@ -18,32 +18,35 @@ model Usuarios {
   estatura        Float?
   peso            Float?
   ejercicio_semanal Int?
-  reservas        Reserva[]           
+  
+  // Relaciones
+  reservas        Reserva[]           @relation("ReservasUsuario")     // ← Relacionadas como reservador
+  responsables    Reserva[]           @relation("ReservasResponsable") // ← Relacionadas como responsable
+  
   reservasHechas  Int                 @default(0)
   faltas          Int                 @default(0)
   rol             String
   clave           String
   centros         CentroDeportivo[]   @relation("PersonalCentro") 
-  avatarUrl       String?             // Campo nuevo para avatar de usuario
-  createdAt       DateTime            @default(now()) // Campo nuevo
-  updatedAt       DateTime            @updatedAt      // Campo nuevo
+  avatarUrl       String?             
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model CentroDeportivo {
   id              String              @id @default(uuid())
   nombre          String
   ubicacion       String
-  imagenUrl       String?             // Campo nuevo para la imagen del centro
+  imagenUrl       String?
   canchas         Cancha[]           
   reservas        Reserva[]           
   personal        Usuarios[]          @relation("PersonalCentro")
-  createdAt       DateTime            @default(now()) // Campo nuevo
-  updatedAt       DateTime            @updatedAt      // Campo nuevo
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   
-  // Metadata de la imagen (opcional)
-  imagenNombre    String?             // Nombre original del archivo
-  imagenTamaño    Int?               // Tamaño en bytes
-  imagenTipo      String?            // Tipo MIME (ej. "image/jpeg")
+  imagenNombre    String?             
+  imagenTamaño    Int?               
+  imagenTipo      String?            
 }
 
 model Cancha {
@@ -61,28 +64,36 @@ model Cancha {
 }
 
 model Reserva {
-  id                String            @id @default(uuid())
+  id                String           @id @default(uuid())
   fecha             DateTime
   horaInicio        DateTime
   horaFin           DateTime
-  centroDeportivo   CentroDeportivo   @relation(fields: [centroDeportivoId], references: [id])
+  estado            String           @default("DISPONIBLE")
+  
+  centroDeportivo   CentroDeportivo  @relation(fields: [centroDeportivoId], references: [id])
   centroDeportivoId String
   cancha            Cancha           @relation(fields: [canchaId], references: [id])
   canchaId          String
-  reservador        Usuarios           @relation(fields: [reservadorId], references: [id]) 
-  reservadorId      String
+
+  reservador        Usuarios?        @relation("ReservasUsuario", fields: [reservadorId], references: [id])
+  reservadorId      String?
+
+  responsable       Usuarios?        @relation("ReservasResponsable", fields: [responsableId], references: [id])
+  responsableId     String?
+
   objetosRentados   ObjetoRenta[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 model ObjetoRenta {
   id          String    @id @default(uuid())
   nombre      String    
   cantidad    Int       
-  imagenUrl   String?   // Campo nuevo para imagen del objeto
+  imagenUrl   String?
   reserva     Reserva   @relation(fields: [reservaId], references: [id])
   reservaId   String
-  createdAt   DateTime  @default(now()) // Campo nuevo
-  updatedAt   DateTime  @updatedAt      // Campo nuevo
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

@@ -107,6 +107,25 @@ const Reservas = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
 
+  const navigateToCrearReservas = () => {
+    console.log("Intentando navegar a Reservas...");
+    try {
+      router.push("/screens/crearReserva");
+    } catch (error) {
+      console.error("Error al navegar:", error);
+      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Reservas");
+    }
+  };
+
+  const navigateToCrearCentroDeportivo = () => {
+    console.log("Intentando navegar a Reservas...");
+    try {
+      router.push("/screens/crearCentroDeportivo");
+    } catch (error) {
+      console.error("Error al navegar:", error);
+      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Centros Deportivos");
+    }
+  };
 
   const verDetalleReserva = (reserva) => {
     setSelectedReserva(reserva);
