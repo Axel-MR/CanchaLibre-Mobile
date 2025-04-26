@@ -34,7 +34,7 @@ model CentroDeportivo {
   nombre          String
   ubicacion       String
   imagenUrl       String?             // Campo nuevo para la imagen del centro
-  canchas         Canchas[]           
+  canchas         Cancha[]           
   reservas        Reserva[]           
   personal        Usuarios[]          @relation("PersonalCentro")
   createdAt       DateTime            @default(now()) // Campo nuevo
@@ -46,18 +46,18 @@ model CentroDeportivo {
   imagenTipo      String?            // Tipo MIME (ej. "image/jpeg")
 }
 
-model Canchas {
+model Cancha {
   id              String              @id @default(uuid())
   nombre          String
   deporte         String
   alumbrado       Boolean         
   jugadores       Int
-  imagenUrl       String?             // Campo nuevo para imagen de cancha
+  imagenUrl       String?
   centroDeportivo CentroDeportivo     @relation(fields: [centroDeportivoId], references: [id])
   centroDeportivoId String
   reservas        Reserva[]           
-  createdAt       DateTime            @default(now()) // Campo nuevo
-  updatedAt       DateTime            @updatedAt      // Campo nuevo
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model Reserva {
@@ -67,7 +67,7 @@ model Reserva {
   horaFin           DateTime
   centroDeportivo   CentroDeportivo   @relation(fields: [centroDeportivoId], references: [id])
   centroDeportivoId String
-  cancha            Canchas           @relation(fields: [canchaId], references: [id])
+  cancha            Cancha           @relation(fields: [canchaId], references: [id])
   canchaId          String
   reservador        Usuarios           @relation(fields: [reservadorId], references: [id]) 
   reservadorId      String

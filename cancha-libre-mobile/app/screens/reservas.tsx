@@ -107,25 +107,6 @@ const Reservas = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
 
-  const navigateToCrearReservas = () => {
-    console.log("Intentando navegar a Reservas...");
-    try {
-      router.push("/screens/crearReserva");
-    } catch (error) {
-      console.error("Error al navegar:", error);
-      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Reservas");
-    }
-  };
-
-  const navigateToCrearCentroDeportivo = () => {
-    console.log("Intentando navegar a Reservas...");
-    try {
-      router.push("/screens/crearCentroDeportivo");
-    } catch (error) {
-      console.error("Error al navegar:", error);
-      Alert.alert("Error de navegación", "No se pudo navegar a la pantalla Crear Centros Deportivos");
-    }
-  };
 
   const verDetalleReserva = (reserva) => {
     setSelectedReserva(reserva);
@@ -238,22 +219,7 @@ const Reservas = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderReservaItem}
         contentContainerStyle={styles.reservasList}
-      />
-      <TouchableOpacity
-        style={styles.reserveButton}
-        onPress={navigateToCrearReservas}
-      >
-        <Text style={styles.reserveButtonText}>Crear Reserva</Text>
-        <Ionicons name="arrow-forward" size={20} color="white" />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.reserveButton}
-        onPress={navigateToCrearCentroDeportivo}
-      >
-        <Text style={styles.reserveButtonText}>Crear Centro Deportivo</Text>
-        <Ionicons name="arrow-forward" size={20} color="white" />
-      </TouchableOpacity>
+      />     
     </>
   );
 
@@ -331,24 +297,7 @@ const Reservas = () => {
             Centros
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'canchas' && styles.tabSelected]}
-          onPress={() => setSelectedTab('canchas')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'canchas' && styles.tabTextSelected]}>
-            Canchas
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'reservas' && styles.tabSelected]}
-          onPress={() => setSelectedTab('reservas')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'reservas' && styles.tabTextSelected]}>
-            Reservas
-          </Text>
-        </TouchableOpacity>
+              
       </View>
       
       <DetalleReservaModal />

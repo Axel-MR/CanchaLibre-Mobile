@@ -83,4 +83,8 @@ const crearCentroDeportivo = async (req, res) => {
     console.error('Error al crear centro deportivo:', error);
     res.status(500).json({ error: 'Error al crear centro deportivo' });
   }
+
+  const centroDeportivoRoutes = require('./routes/centroDeportivoRoutes');
+const reservaRoutes = require('./routes/reservaRoutes'); // Asegúrate de que este archivo exista
+
 };
