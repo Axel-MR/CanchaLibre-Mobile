@@ -1,117 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, Text, View, TouchableOpacity, FlatList, Image, StyleSheet } from 'react-native';
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const helmet = require('helmet');
+const { PrismaClient } = require('@prisma/client');
 
-const Reservas = () => {
-  const [reservas, setReservas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Inicialización
+const app = express();
+const prisma = new PrismaClient();
 
-  // Función para obtener las reservas desde la API
-  const fetchReservas = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/reservas');  // Asegúrate de que esta URL sea correcta
-      if (!response.ok) {
-        throw new Error('Error al obtener los datos');
-      }
-      const data = await response.json();
-      setReservas(data);
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+// Middlewares
+app.use(helmet());
+app.use(cors({
+  origin: '*',  // Permitir solicitudes de cualquier origen
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(morgan('dev'));  // Log de peticiones
+app.use(express.json({ limit: '50mb' }));  // Aumentar el límite del cuerpo para aceptar grandes cantidades de datos
 
-  useEffect(() => {
-    fetchReservas();
-  }, []);
+// Conexión a Prisma (base de datos)
+prisma.$connect()
+  .then(() => console.log('✅ Conectado a PostgreSQL'))
+  .catch(err => console.error('❌ Error de conexión a DB:', err));
 
-  // Renderizar si hay error o cargando
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>Cargando reservas...</Text>
-      </SafeAreaView>
-    );
-  }
+// Importar y usar rutas
+const authRoutes = require('./routes/authRoutes');
+const centroDeportivoRoutes = require('./routes/centroDeportivoRoutes');
+const reservaRoutes = require('./routes/reservaRoutes');  // Esta es la ruta para manejar las reservas
+const reservaController = require('./controllers/reservaController');  // Importamos el controlador
 
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>Error: {error}</Text>
-      </SafeAreaView>
-    );
-  }
+// Ruta para obtener todas las canchas
+app.get('/api/canchas', reservaController.getAllCanchas); // Aquí agregamos la nueva ruta
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Reservas Disponibles</Text>
-      <FlatList
-        data={reservas}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.reservaCard}>
-            <View style={styles.reservaContent}>
-              <Text style={styles.deporteTitulo}>{item.deporte}</Text>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Centro Deportivo:</Text>
-                <Text style={styles.infoValue}>{item.centroDeportivo.nombre}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Fecha y Hora:</Text>
-                <Text style={styles.infoValue}>{item.fechaHora}</Text>
-              </View>
-            </View>
-            <Image source={{ uri: item.imagenUrl }} style={styles.reservaImagen} />
-          </View>
-        )}
-      />
-    </SafeAreaView>
-  );
-};
+app.use('/api/auth', authRoutes);
+app.use('/api/centros-deportivos', centroDeportivoRoutes);
+app.use('/api/reservas', reservaRoutes);  // Ruta para las reservas
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  reservaCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    marginVertical: 8,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-  },
-  reservaContent: {
-    flex: 1,
-  },
-  deporteTitulo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginVertical: 4,
-  },
-  infoLabel: {
-    fontWeight: 'bold',
-  },
-  infoValue: {
-    color: '#555',
-  },
-  reservaImagen: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
+// Ruta de verificación para comprobar el estado de la API
+app.get('/api/status', (req, res) => {
+  res.json({ status: 'ok', message: 'API funcionando correctamente' });
 });
 
-export default Reservas;
+// Manejo de errores global (cualquier error no manejado se pasa aquí)
+app.use((err, req, res, next) => {
+  console.error('🔥 Error global:', err);
+  res.status(500).json({
+    error: 'Error interno del servidor',
+    message: err.message
+  });
+});
+
+// Iniciar servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor corriendo:
+  - Local: http://localhost:${PORT}
+  - Red: http://192.168.100.13:${PORT}`);
+});
+
+// Manejo de cierre limpio
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();  // Desconectar de la base de datos
+  process.exit();
+});
+
+// Ejemplo de función para crear un nuevo centro deportivo
+const crearCentroDeportivo = async (req, res) => {
+  try {
+    const { nombre, ubicacion, imagenUrl, imagenNombre, imagenTamaño, imagenTipo } = req.body;
+
+    const nuevoCentro = await prisma.centroDeportivo.create({
+      data: {
+        nombre,
+        ubicacion,
+        imagenUrl,
+        imagenNombre,
+        imagenTamaño,
+        imagenTipo
+      }
+    });
+
+    res.status(201).json(nuevoCentro);
+  } catch (error) {
+    console.error('Error al crear centro deportivo:', error);
+    res.status(500).json({ error: 'Error al crear centro deportivo' });
+  }
+};

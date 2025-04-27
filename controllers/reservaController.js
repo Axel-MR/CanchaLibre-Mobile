@@ -1,99 +1,176 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Función para obtener todas las canchas
+const getAllCanchas = async (req, res) => {
+  try {
+    const canchas = await prisma.cancha.findMany();
+    return res.status(200).json({
+      success: true,
+      data: canchas
+    });
+  } catch (error) {
+    console.error('Error al obtener canchas:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al obtener canchas'
+    });
+  }
+};
+
+// Función para crear una reserva
 const crearReserva = async (req, res) => {
-    const { 
-        fecha, 
-        horaInicio, 
-        horaFin, 
-        canchaId, 
-        centroDeportivoId, 
-        reservadorId,  // Ahora opcional
-        responsableId, // Puede ser opcional o requerido según tu lógica
-        objetosRentadosIds  // Opcional
-    } = req.body;
-
-    // Validación de campos obligatorios (eliminamos reservadorId)
+  try {
+    console.log("Datos recibidos en crearReserva:", JSON.stringify(req.body));
+    
+    const { fecha, horaInicio, horaFin, canchaId, centroDeportivoId, reservadorId, estado } = req.body;
+    
+    // Validar que los datos necesarios estén presentes
     if (!fecha || !horaInicio || !horaFin || !canchaId || !centroDeportivoId) {
-        return res.status(400).json({ 
-            success: false,
-            error: 'Faltan campos obligatorios: fecha, horaInicio, horaFin, canchaId, centroDeportivoId son requeridos' 
-        });
+      console.log("Faltan datos requeridos:", { fecha, horaInicio, horaFin, canchaId, centroDeportivoId });
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan datos requeridos para crear la reserva'
+      });
     }
-
+    
+    // Convertir las cadenas de fecha a objetos Date
+    let fechaObj, horaInicioObj, horaFinObj;
+    
     try {
-        // Verificar existencia de cancha y centro deportivo
-        const [cancha, centroDeportivo] = await Promise.all([
-            prisma.Cancha.findUnique({ where: { id: canchaId } }),
-            prisma.CentroDeportivo.findUnique({ where: { id: centroDeportivoId } })
-        ]);
+      // Asegurarse de que fecha sea una fecha válida
+      fechaObj = new Date(fecha);
+      if (isNaN(fechaObj.getTime())) {
+        throw new Error(`Fecha inválida: ${fecha}`);
+      }
+      
+      // Asegurarse de que horaInicio sea una fecha válida
+      horaInicioObj = new Date(horaInicio);
+      if (isNaN(horaInicioObj.getTime())) {
+        throw new Error(`Hora inicio inválida: ${horaInicio}`);
+      }
+      
+      // Asegurarse de que horaFin sea una fecha válida
+      horaFinObj = new Date(horaFin);
+      if (isNaN(horaFinObj.getTime())) {
+        throw new Error(`Hora fin inválida: ${horaFin}`);
+      }
+      
+      console.log("Fechas convertidas:", {
+        fechaObj: fechaObj.toISOString(),
+        horaInicioObj: horaInicioObj.toISOString(),
+        horaFinObj: horaFinObj.toISOString()
+      });
+    } catch (error) {
+      console.error("Error al convertir fechas:", error);
+      return res.status(400).json({
+        success: false,
+        error: 'Formato de fecha inválido',
+        details: error.message
+      });
+    }
+    
+    // Crear la reserva en la base de datos
+    console.log("Intentando crear reserva con:", {
+      fecha: fechaObj,
+      horaInicio: horaInicioObj,
+      horaFin: horaFinObj,
+      canchaId,
+      centroDeportivoId,
+      reservadorId: reservadorId || null,
+      estado: estado || 'RESERVADO'
+    });
+    
+    const nuevaReserva = await prisma.Reserva.create({
+      data: {
+        fecha: fechaObj,
+        horaInicio: horaInicioObj,
+        horaFin: horaFinObj,
+        canchaId,
+        centroDeportivoId,
+        reservadorId: reservadorId || null,
+        estado: estado || 'RESERVADO'
+      }
+    });
+    
+    console.log("Reserva creada exitosamente:", nuevaReserva);
+    
+    return res.status(201).json({
+      success: true,
+      data: nuevaReserva
+    });
+  } catch (error) {
+    console.error('Error al crear reserva:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al crear la reserva',
+      details: error.message
+    });
+  }
+};
 
-        if (!cancha) return res.status(404).json({ success: false, error: 'Cancha no encontrada' });
-        if (!centroDeportivo) return res.status(404).json({ success: false, error: 'Centro deportivo no encontrado' });
-
-        // Verificación condicional de usuarios
-        let reservador = null;
-        let responsable = null;
-
-        if (reservadorId) {
-            reservador = await prisma.Usuarios.findUnique({ where: { id: reservadorId } });
-            if (!reservador) return res.status(404).json({ success: false, error: 'Usuario reservador no encontrado' });
-        }
-
-        if (responsableId) {
-            responsable = await prisma.Usuarios.findUnique({ where: { id: responsableId } });
-            if (!responsable) return res.status(404).json({ success: false, error: 'Responsable no encontrado' });
-        }
-
-        // Crear objeto de datos para Prisma
-        const reservaData = {
-            fecha: new Date(fecha),
-            horaInicio: new Date(horaInicio),
-            horaFin: new Date(horaFin),
-            centroDeportivo: { connect: { id: centroDeportivoId } },
-            cancha: { connect: { id: canchaId } },
-            estado: "DISPONIBLE" // Suponiendo que tienes un campo estado
-        };
-
-        // Agregar relaciones opcionales si se proporcionan IDs
-        if (reservadorId) {
-            reservaData.reservador = { connect: { id: reservadorId } };
-        }
-        
-        if (responsableId) {
-            reservaData.responsable = { connect: { id: responsableId } };
-        }
-
-        if (objetosRentadosIds && objetosRentadosIds.length > 0) {
-            reservaData.objetosRentados = {
-                connect: objetosRentadosIds.map(id => ({ id }))
-            };
-        }
-
-        // Crear reserva
-        const nuevaReserva = await prisma.Reserva.create({
-            data: reservaData,
+// Función para obtener todas las reservas
+const obtenerReservas = async (req, res) => {
+    try {
+        const reservas = await prisma.Reserva.findMany({
             include: {
                 cancha: true,
                 centroDeportivo: true,
-                reservador: reservadorId ? true : false,
-                responsable: responsableId ? true : false,
-                objetosRentados: objetosRentadosIds && objetosRentadosIds.length > 0 ? true : false
+                reservador: true
             }
         });
-
-        res.status(201).json({
+        
+        res.status(200).json({
             success: true,
-            data: nuevaReserva
+            data: reservas
         });
     } catch (error) {
-        console.error('Error al crear reserva:', error);
-        res.status(500).json({ 
+        console.error('Error al obtener reservas:', error);
+        res.status(500).json({
             success: false,
-            error: 'Error al crear reserva', 
-            details: error.message 
+            error: 'Error al obtener reservas',
+            details: error.message
         });
     }
 };
 
-module.exports = { crearReserva };
+// Función para obtener las reservas disponibles
+const obtenerReservasDisponibles = async (req, res) => {
+    try {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        
+        const reservas = await prisma.Reserva.findMany({
+            where: {
+                reservadorId: null,
+                fecha: {
+                    gte: hoy
+                }
+            },
+            include: {
+                cancha: true,
+                centroDeportivo: true
+            }
+        });
+        
+        res.status(200).json({
+            success: true,
+            data: reservas
+        });
+    } catch (error) {
+        console.error('Error al obtener reservas disponibles:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error al obtener reservas disponibles',
+            details: error.message
+        });
+    }
+};
+
+// Exporta todas las funciones
+module.exports = { 
+    crearReserva,
+    obtenerReservas,
+    obtenerReservasDisponibles,
+    getAllCanchas
+};

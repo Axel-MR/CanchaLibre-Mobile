@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-// Helper para manejar imágenes base64 (reutilizando tu código)
+// Helper para manejar imágenes base64
 const saveBase64Image = (base64String, folder) => {
   if (!base64String) return null;
   
@@ -41,34 +41,64 @@ const deleteImageFile = (imagePath) => {
   }
 };
 
+// Obtener canchas
+const obtenerCanchas = async (req, res) => {
+    try {
+        const canchas = await prisma.Cancha.findMany({
+            include: {
+                centroDeportivo: true // Incluir los datos del centro deportivo
+            }
+        });
+        
+        res.status(200).json({
+            success: true,
+            data: canchas
+        });
+    } catch (error) {
+        console.error('Error al obtener canchas:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error al obtener canchas',
+            details: error.message
+        });
+    }
+};
+
 // Obtener canchas por centro deportivo
 const obtenerCanchasPorCentro = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const canchas = await prisma.cancha.findMany({
-      where: { centroDeportivoId: id },
-      orderBy: { nombre: 'asc' }
-    });
-
-    const canchasConImagen = canchas.map(cancha => ({
-      ...cancha,
-      imagenUrl: cancha.imagenUrl ? `${process.env.BASE_URL || ''}${cancha.imagenUrl}` : null
-    }));
-
-    res.json({
-      success: true,
-      count: canchas.length,
-      data: canchasConImagen
-    });
-  } catch (error) {
-    console.error('Error al obtener canchas:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener canchas',
-      details: error.message
-    });
-  }
+    const { id } = req.params;
+    
+    try {
+        // Verificar que el centro deportivo existe
+        const centroDeportivo = await prisma.CentroDeportivo.findUnique({
+            where: { id }
+        });
+        
+        if (!centroDeportivo) {
+            return res.status(404).json({
+                success: false,
+                error: 'Centro deportivo no encontrado'
+            });
+        }
+        
+        const canchas = await prisma.Cancha.findMany({
+            where: {
+                centroDeportivoId: id
+            }
+        });
+        
+        res.status(200).json({
+            success: true,
+            data: canchas
+        });
+    } catch (error) {
+        console.error('Error al obtener canchas por centro:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error al obtener canchas',
+            details: error.message
+        });
+    }
 };
 
 // Crear nueva cancha
@@ -85,7 +115,7 @@ const crearCancha = async (req, res) => {
 
   try {
     // Verificar que el centro deportivo existe
-    const centroExiste = await prisma.centroDeportivo.findUnique({
+    const centroExiste = await prisma.CentroDeportivo.findUnique({
       where: { id: centroDeportivoId }
     });
 
@@ -108,7 +138,7 @@ const crearCancha = async (req, res) => {
       });
     }
 
-    const nuevaCancha = await prisma.cancha.create({
+    const nuevaCancha = await prisma.Cancha.create({
       data: {
         nombre,
         deporte,
@@ -146,7 +176,7 @@ const actualizarCancha = async (req, res) => {
 
   try {
     // Verificar si existe la cancha
-    const canchaExistente = await prisma.cancha.findUnique({ where: { id } });
+    const canchaExistente = await prisma.Cancha.findUnique({ where: { id } });
     if (!canchaExistente) {
       return res.status(404).json({
         success: false,
@@ -182,7 +212,7 @@ const actualizarCancha = async (req, res) => {
       }
     }
 
-    const canchaActualizada = await prisma.cancha.update({
+    const canchaActualizada = await prisma.Cancha.update({
       where: { id },
       data: {
         nombre: nombre || canchaExistente.nombre,
@@ -218,7 +248,7 @@ const eliminarCancha = async (req, res) => {
 
   try {
     // Obtener la cancha primero para eliminar su imagen
-    const cancha = await prisma.cancha.findUnique({ where: { id } });
+    const cancha = await prisma.Cancha.findUnique({ where: { id } });
     if (!cancha) {
       return res.status(404).json({
         success: false,
@@ -232,7 +262,7 @@ const eliminarCancha = async (req, res) => {
     }
 
     // Eliminar la cancha
-    await prisma.cancha.delete({ where: { id } });
+    await prisma.Cancha.delete({ where: { id } });
 
     res.json({
       success: true,
@@ -249,6 +279,7 @@ const eliminarCancha = async (req, res) => {
 };
 
 module.exports = {
+  obtenerCanchas,
   obtenerCanchasPorCentro,
   crearCancha,
   actualizarCancha,

@@ -1,7 +1,14 @@
 // routes/reservaRoutes.js
 const express = require('express');
 const router = express.Router();
-const { crearReserva } = require('../controllers/reservaController');
+const { 
+    crearReserva, 
+    obtenerReservas, 
+    obtenerReservasDisponibles 
+} = require('../controllers/reservaController');
 
-router.post('/', crearReserva); 
+router.get('/', obtenerReservas); // Obtener todas las reservas
+router.get('/disponibles', obtenerReservasDisponibles); // Obtener reservas disponibles
+router.post('/', crearReserva); // Crear una nueva reserva
+
 module.exports = router;
