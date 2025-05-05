@@ -58,7 +58,6 @@ app.listen(PORT, '0.0.0.0', () => {
   - Local: http://localhost:${PORT}
   - Red: http://192.168.100.13:${PORT}`);
 });
-
 // Manejo de cierre limpio
 process.on('SIGINT', async () => {
   await prisma.$disconnect();  // Desconectar de la base de datos

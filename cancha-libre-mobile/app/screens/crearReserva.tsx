@@ -294,15 +294,17 @@ const CrearReserva = () => {
       fechaHoraFin.setHours(horaFin, minutoFin, 0, 0);
       
       // Crear un objeto de reserva con fechas en formato ISO
-      const reservaData = {
-        fecha: fechaBase.toISOString(),
-        horaInicio: fechaHoraInicio.toISOString(),
-        horaFin: fechaHoraFin.toISOString(),
-        canchaId: canchaSeleccionada,
-        centroDeportivoId: centroSeleccionado,
-        reservadorId: userId,
-        estado: "RESERVADO"
-      };
+      // Crear un objeto de reserva con fechas en formato ISO
+// Crear un objeto de reserva con fechas en formato ISO
+const reservaData = {
+  fecha: fechaBase.toISOString(),
+  horaInicio: fechaHoraInicio.toISOString(),
+  horaFin: fechaHoraFin.toISOString(),
+  canchaId: canchaSeleccionada,
+  centroDeportivoId: centroSeleccionado,
+  // No incluir reservadorId
+  estado: "DISPONIBLE"
+};
       
       console.log("Enviando datos de reserva:", JSON.stringify(reservaData));
       

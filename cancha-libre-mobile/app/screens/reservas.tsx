@@ -19,75 +19,13 @@ import { Ionicons } from '@expo/vector-icons';
 import api from "../../services/api";
 import * as SecureStore from "expo-secure-store";
 
-// Datos mock para canchas (ya que no hay endpoint para obtenerlas)
-const CANCHAS_MOCK = [
-  {
-    id: '1',
-    nombre: 'Cancha 1',
-    deporte: 'Fútbol Rápido',
-    alumbrado: true,
-    jugadores: 10,
-    imagenUrl: 'https://via.placeholder.com/400x200',
-    centroDeportivoId: '1',
-  },
-  {
-    id: '2',
-    nombre: 'Cancha 2',
-    deporte: 'Tenis',
-    alumbrado: true,
-    jugadores: 2,
-    imagenUrl: 'https://via.placeholder.com/400x200',
-    centroDeportivoId: '1',
-  },
-  {
-    id: '3',
-    nombre: 'Cancha 3',
-    deporte: 'Básquet',
-    alumbrado: false,
-    jugadores: 10,
-    imagenUrl: 'https://via.placeholder.com/400x200',
-    centroDeportivoId: '2',
-  },
-];
-
-// Datos mock para reservas (ya que no hay endpoint para obtenerlas)
-const RESERVAS_MOCK = [
-  {
-    id: '1',
-    fecha: new Date(2025, 3, 26), // 26 de abril de 2025 (hoy)
-    horaInicio: new Date(2025, 3, 26, 21, 0), // 21:00
-    horaFin: new Date(2025, 3, 26, 22, 0), // 22:00
-    centroDeportivoId: '1',
-    canchaId: '1',
-    reservadorId: null, // Sin reservador (disponible)
-  },
-  {
-    id: '2',
-    fecha: new Date(2025, 3, 27), // 27 de abril de 2025 (mañana)
-    horaInicio: new Date(2025, 3, 27, 10, 0), // 10:00
-    horaFin: new Date(2025, 3, 27, 12, 0), // 12:00
-    centroDeportivoId: '1',
-    canchaId: '2',
-    reservadorId: null, // Sin reservador (disponible)
-  },
-  {
-    id: '3',
-    fecha: new Date(2025, 3, 28), // 28 de abril de 2025
-    horaInicio: new Date(2025, 3, 28, 18, 0), // 18:00
-    horaFin: new Date(2025, 3, 28, 19, 0), // 19:00
-    centroDeportivoId: '2',
-    canchaId: '3',
-    reservadorId: null, // Sin reservador (disponible)
-  },
-];
-
 const Reservas = () => {
   const [selectedReserva, setSelectedReserva] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [centrosDeportivos, setCentrosDeportivos] = useState([]);
-  const [canchas, setCanchas] = useState(CANCHAS_MOCK); // Usar datos mock
+  const [canchas, setCanchas] = useState([]);
   const [reservasDisponibles, setReservasDisponibles] = useState([]);
   const router = useRouter();
 
@@ -104,27 +42,40 @@ const Reservas = () => {
         throw new Error("No se encontró token de autenticación");
       }
 
-      // Cargar centros deportivos (esta ruta sí funciona)
+      // Cargar centros deportivos
       const centrosResponse = await api.get('/centros-deportivos');
       if (centrosResponse.data && centrosResponse.data.data) {
         setCentrosDeportivos(centrosResponse.data.data);
       }
 
-      // Usar datos mock para canchas
-      setCanchas(CANCHAS_MOCK);
+      // Cargar canchas
+      const canchasResponse = await api.get('/canchas');
+      if (canchasResponse.data && canchasResponse.data.data) {
+        setCanchas(canchasResponse.data.data);
+      } else {
+        console.log("No se encontraron datos de canchas en la respuesta");
+      }
 
-      // Filtrar reservas mock para mostrar solo las disponibles
-      // y con fecha igual o posterior a hoy
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0); // Establecer a inicio del día
+      // Cargar reservas disponibles - AQUÍ ESTÁ EL CAMBIO PRINCIPAL
+      console.log("Obteniendo reservas disponibles...");
+      const reservasResponse = await api.get('/reservas/disponibles');
+      console.log("Respuesta de reservas:", reservasResponse.data);
       
-      const reservasFiltradas = RESERVAS_MOCK.filter(reserva => {
-        const fechaReserva = new Date(reserva.fecha);
-        fechaReserva.setHours(0, 0, 0, 0);
-        return !reserva.reservadorId && fechaReserva >= hoy;
-      });
-      
-      setReservasDisponibles(reservasFiltradas);
+      if (reservasResponse.data && reservasResponse.data.data) {
+        // Convertir las fechas de string a objetos Date
+        const reservasConFechas = reservasResponse.data.data.map(reserva => ({
+          ...reserva,
+          fecha: new Date(reserva.fecha),
+          horaInicio: new Date(reserva.horaInicio),
+          horaFin: new Date(reserva.horaFin)
+        }));
+        
+        setReservasDisponibles(reservasConFechas);
+        console.log(`Se encontraron ${reservasConFechas.length} reservas disponibles`);
+      } else {
+        console.log("No se encontraron datos de reservas en la respuesta");
+        setReservasDisponibles([]);
+      }
     } catch (error) {
       console.error("Error al cargar datos:", error);
       let errorMessage = "Error al cargar los datos";
@@ -137,23 +88,8 @@ const Reservas = () => {
       }
       Alert.alert("Error", errorMessage);
       
-      // Si hay error al cargar centros, usar datos mock para todo
-      setCentrosDeportivos([
-        {
-          id: '1',
-          nombre: 'Deportivo 1° de Mayo',
-          ubicacion: 'Av. Libertad 1200',
-          imagenUrl: 'https://via.placeholder.com/400x200',
-        },
-        {
-          id: '2',
-          nombre: 'Complejo Municipal',
-          ubicacion: 'Calle Principal 500',
-          imagenUrl: 'https://via.placeholder.com/400x200',
-        },
-      ]);
-      setCanchas(CANCHAS_MOCK);
-      setReservasDisponibles(RESERVAS_MOCK.filter(r => !r.reservadorId));
+      // Si hay error, establecer arrays vacíos
+      setReservasDisponibles([]);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -202,27 +138,53 @@ const Reservas = () => {
         throw new Error("No se encontró token de autenticación");
       }
 
-      // Aquí implementarías la llamada a la API para reservar
-      // Por ahora, solo mostraremos un mensaje
-      Alert.alert(
-        "Reserva exitosa",
-        "La cancha ha sido reservada correctamente.",
-        [
-          { 
-            text: "OK", 
-            onPress: () => {
-              setModalVisible(false);
-              // Actualizar la lista de reservas disponibles
-              setReservasDisponibles(
-                reservasDisponibles.filter(r => r.id !== reservaId)
-              );
-            } 
+      // Obtener el ID del usuario del token
+      const tokenParts = token.split('.');
+      let userId = '';
+      
+      if (tokenParts.length > 1) {
+        try {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          if (payload && payload.userId) {
+            userId = payload.userId;
           }
-        ]
-      );
+        } catch (e) {
+          console.error("Error al decodificar token:", e);
+        }
+      }
+      
+      if (!userId) {
+        throw new Error("No se pudo obtener el ID del usuario");
+      }
+
+      // Aquí implementarías la llamada a la API para reservar
+      // Por ejemplo, actualizar la reserva con el ID del usuario
+      const response = await api.put(`/reservas/${reservaId}`, {
+        reservadorId: userId,
+        estado: 'RESERVADO'
+      });
+
+      if (response.data && response.data.success) {
+        Alert.alert(
+          "Reserva exitosa",
+          "La cancha ha sido reservada correctamente.",
+          [
+            { 
+              text: "OK", 
+              onPress: () => {
+                setModalVisible(false);
+                // Actualizar la lista de reservas disponibles
+                fetchData(); // Volver a cargar los datos
+              } 
+            }
+          ]
+        );
+      } else {
+        throw new Error("No se pudo completar la reserva");
+      }
     } catch (error) {
       console.error("Error al reservar:", error);
-      Alert.alert("Error", "No se pudo completar la reserva");
+      Alert.alert("Error", "No se pudo completar la reserva: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -353,6 +315,13 @@ const Reservas = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Reservas Disponibles</Text>
+        <TouchableOpacity 
+          style={styles.createButton}
+          onPress={navigateToCrearReservas}
+        >
+          <Ionicons name="add-circle" size={24} color="white" />
+          <Text style={styles.createButtonText}>Crear</Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.content}>
@@ -372,6 +341,7 @@ const Reservas = () => {
             <View style={styles.emptyContainer}>
               <Ionicons name="calendar-outline" size={50} color="#ccc" />
               <Text style={styles.emptyText}>No hay reservas disponibles</Text>
+              <Text style={styles.emptySubText}>Desliza hacia abajo para actualizar o crea una nueva reserva</Text>
             </View>
           }
         />
@@ -390,13 +360,28 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#2196F3',
     padding: 15,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     elevation: 4,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  createButtonText: {
+    color: 'white',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   content: {
     flex: 1,
@@ -525,6 +510,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#999',
+    textAlign: 'center',
+  },
+  emptySubText: {
+    marginTop: 5,
+    fontSize: 14,
+    color: '#aaa',
     textAlign: 'center',
   },
 });
